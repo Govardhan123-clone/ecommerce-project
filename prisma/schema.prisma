@@ -1,0 +1,128 @@
+// schema.prisma
+datasource db {
+  provider = "mysql" // Use MySQL database
+  url      = env("DATABASE_URL") // Make sure DATABASE_URL is defined in .env
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  email              String              @unique
+  password           String
+  emailVerified      Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  carts              Cart[]
+  orders             Order[]
+  questions          Question[] // User can ask questions
+  answers            Answer[] // User can answer questions
+  sessions           Session[] // User can have multiple sessions
+  verificationTokens VerificationToken[] // User can have multiple verification tokens (for email or password reset)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  userId     String
+  user       User     @relation(fields: [userId], references: [email])
+
+  @@unique([identifier, token])
+}
+
+model Session {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String
+  price       Float
+  imageUrl    String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  questions   Question[] // Product can have related questions
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  userId    Int
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id])
+  cartItems CartItem[]
+
+  // Total price of all items in the cart (can be calculated dynamically)
+  totalPrice Float @default(0)
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  productId Int
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cart      Cart     @relation(fields: [cartId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id])
+
+  // Price at the time of adding to the cart (in case product price changes later)
+  priceAtAdd Float
+}
+
+model Order {
+  id         Int         @id @default(autoincrement())
+  userId     Int
+  totalPrice Float
+  status     String      @default("pending") // status can be "pending", "completed", etc.
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  user       User        @relation(fields: [userId], references: [id])
+  orderItems OrderItem[]
+}
+
+model OrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  productId  Int
+  quantity   Int      @default(1)
+  priceAtAdd Float // Price at the time of placing the order
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  order      Order    @relation(fields: [orderId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  content   String
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+}
+
+model Answer {
+  id         Int      @id @default(autoincrement())
+  content    String
+  userId     Int
+  questionId Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id])
+  question   Question @relation(fields: [questionId], references: [id])
+}
